@@ -118,7 +118,7 @@ if prompt:
     thread_id=st.session_state.thread.id
     )
 
-    st.session_state.messages = st.session_state.messages + [msg for msg in reversed(messages.data)]
+    st.session_state.messages = [msg for msg in reversed(messages.data)]
 
     for message in st.session_state.messages:
         with st.chat_message(message.role):
