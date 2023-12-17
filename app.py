@@ -29,13 +29,13 @@ available_functions = {
 }
 
 if "client" not in st.session_state:
-    client = OpenAI()
+     st.session_state.client = OpenAI()
 
-assistansList = client.beta.assistants.list()
+assistansList = st.session_state.client.beta.assistants.list()
 
 if "Financial Analyst" not in [m.name for m in assistansList.data]:
-    create_assistant(client=client)
-    assistansList = client.beta.assistants.list()
+    create_assistant(client=st.session_state.client)
+    assistansList = st.session_state.client.beta.assistants.list()
 
 assistantName = st.sidebar.selectbox("Available Assistants",[m.name for m in assistansList.data])
 assistant: Assistant = next((m for m in assistansList.data if m.name == assistantName),None)
@@ -52,27 +52,28 @@ prompt = st.chat_input("Say something")
 if prompt:
     
     #Step 2: Create a Thread
-    thread: Thread  = client.beta.threads.create()
+    if "thread" not in st.session_state:
+        st.session_state.thread: Thread  = st.session_state.client.beta.threads.create()
 
     #Step 3: Add a Message to a Thread
-    message = client.beta.threads.messages.create(
-        thread_id=thread.id,
+    message = st.session_state.client.beta.threads.messages.create(
+        thread_id=st.session_state.thread.id,
         role="user",
         content=prompt
     )   
 
     #Step 4: Run the Assistant
-    run: Run = client.beta.threads.runs.create(
-    thread_id=thread.id,
+    run: Run = st.session_state.client.beta.threads.runs.create(
+    thread_id=st.session_state.thread.id,
     assistant_id=assistant.id,
     instructions="Please address the user as Hannan. The user has a premium account."
     )
 
     #Step 5: Check the Run status
-    with st.status("Generating Response...", expanded=True) as status:
+    with st.status("Generating Response...", expanded=False) as status:
         while True:
-            run = client.beta.threads.runs.retrieve(
-                    thread_id=thread.id,
+            run = st.session_state.client.beta.threads.runs.retrieve(
+                    thread_id=st.session_state.thread.id,
                     run_id=run.id,
                 )
             st.write(run.status)
@@ -95,8 +96,8 @@ if prompt:
                                     "output": response
                                 }
                             )
-                    client.beta.threads.runs.submit_tool_outputs(
-                        thread_id=thread.id,
+                    st.session_state.client.beta.threads.runs.submit_tool_outputs(
+                        thread_id=st.session_state.thread.id,
                         run_id=run.id,
                         tool_outputs=tools_outputs
                     )
@@ -113,8 +114,8 @@ if prompt:
 
     #Step 6: Display the Assistant's Response
 
-    messages: list[ThreadMessage] = client.beta.threads.messages.list(
-    thread_id=thread.id
+    messages: list[ThreadMessage] = st.session_state.client.beta.threads.messages.list(
+    thread_id=st.session_state.thread.id
     )
 
     st.session_state.messages = st.session_state.messages + [msg for msg in reversed(messages.data)]
@@ -126,7 +127,7 @@ if prompt:
                     st.markdown(mc.text.value)
                 if mc.type == "image_file":
                     fileid = (mc.image_file.file_id)
-                    image_data = client.files.content(file_id=fileid)
+                    image_data = st.session_state.client.files.content(file_id=fileid)
                     image_data_bytes = image_data.read()
                     with open(f"""./{fileid}.png""", "wb") as file:
                         file.write(image_data_bytes)
